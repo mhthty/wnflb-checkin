@@ -630,7 +630,7 @@ def main():
     parser.add_argument("--cookie-file", default=os.environ.get("COOKIE_FILE", "cookies.json"),
                         help="Cookie 缓存文件路径（默认 cookies.json）")
     parser.add_argument("--no-save", action="store_true", help="不保存 Cookie")
-    parser.add_argument("--mode", default="checkin", help="签到模式标签(checkin/recheck)")
+    parser.add_argument("--mode", default="万能福利吧签到", help="签到模式标签(万能福利吧签到/万能福利吧补签)")
     parser.add_argument("--inspect", action="store_true",
                         help="仅解析登录页并打印结果后退出")
     args = parser.parse_args()
