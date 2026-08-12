@@ -71,16 +71,6 @@ def parse_cookies(raw):
     return cookies
 
 
-def cookies_to_header(session):
-    """把当前 session 的 cookie 拼成 header 字符串，方便用户复制"""
-    return "; ".join(f"{c.name}={c.value}" for c in session.cookies)
-
-
-def redact_cookie_header(header):
-    """脱敏：把 auth 会话令牌打码，避免登录日志泄露（公开仓库 Actions 日志人人可见）"""
-    return re.sub(r"(auth=)[^;]+", r"\1***", header)
-
-
 def get_page_text(resp):
     """优先按 GBK 解码（论坛是 GBK）"""
     if resp.encoding and resp.encoding.lower() in ("gbk", "gb2312", "gb18030"):
@@ -295,7 +285,6 @@ def solve_captcha(session, cap):
                 print(f"  [验证码] 第 {attempt} 次返回非图片(可能被拦截), len={len(r.content)}")
                 continue
             code = ocr.classification(r.content).strip()
-            print(f"  [验证码] 第 {attempt} 次识别结果: {code!r}")
             if code:
                 return code
         except Exception as e:
@@ -326,7 +315,6 @@ def verify_captcha_code(session, cap, code):
         txt = get_page_text(r)
         # 论坛返回 <root><![CDATA[succeed]]></root> 表示验证码正确
         ok = "succeed" in txt
-        print(f"  [验证码] 校验接口返回: {txt[:80]!r} (ok={ok})")
         return ok
     except Exception as e:
         print(f"  [验证码] 校验接口异常: {e}")
@@ -463,13 +451,6 @@ def do_login(session, username, password):
     if not (c_fh and c_lh):
         return False, "验证码挑战页未解析出 formhash/loginhash"
     if not cap["needed"] or not cap["idhash"]:
-        # 调试：把挑战页里和验证码相关的片段打出来，便于排查页面结构变化
-        dbg = re.findall(r".{0,40}seccode.{0,60}", chtml, re.I)
-        if not dbg:
-            dbg = re.findall(r".{0,30}updateseccode.{0,60}", chtml, re.I)
-        print("  [调试] 挑战页未匹配到 seccode 标记，相关片段:")
-        for d in dbg[:5]:
-            print("    ", d.strip()[:120])
         return False, f"验证码挑战页未解析出验证码(idhash 缺失): {msg}"
 
     # 二次挑战提交（不带账号密码，凭据由 auth 关联）。最多 3 次换图重试；
@@ -683,8 +664,6 @@ def main():
         print(f"  -> {msg}")
         if not args.no_save:
             save_cookies(session, args.cookie_file)
-            # 打印可复制的 Cookie 字符串（方便填 FORUM_COOKIE）——auth 会话令牌已脱敏
-            print(f"  [Cookie] 字符串(已脱敏): {redact_cookie_header(cookies_to_header(session))}")
         logged, html = verify_login(session)
         if not logged:
             print("[FAIL] 登录后首页校验未通过")
@@ -705,7 +684,6 @@ def main():
         print(f"[FAIL] {msg}")
         send_notification(f"[签到失败] {args.mode}", f"时间:{now}\n错误:{msg}")
         sys.exit(1)
-    print(f"  -> formhash={formhash} fx_formhash={fx_formhash}")
 
     text = do_checkin(session, formhash, fx_formhash)
     success, message = parse_result(text)
