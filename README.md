@@ -41,7 +41,7 @@
 2. 进入 `Settings → Secrets and variables → Actions → New repository secret`，添加：
    - `FORUM_USERNAME`：论坛账号（**必填**）
    - `FORUM_PASSWORD`：论坛密码（**必填**）
-   - `FORUM_COOKIE`：（可选）直接填 Cookie 字符串，优先级高于下面两种方式
+   - `FORUM_COOKIE`：（可选）直接填 Cookie 字符串，优先级高于账号密码登录
    - `PUSHPLUS_TOKEN` / `SERVERCHAN_KEY`：（可选）微信推送通知
 3. 进入 `Actions` 标签页，手动 **Run workflow** 跑一次验证；之后会按 cron
    （北京时间 01:00 / 22:00）自动运行。
@@ -53,7 +53,6 @@
 > ⚠️ **安全建议：Fork 后把仓库改为私有（强烈推荐）**。Cache 里存的是含登录会话令牌（`auth`）的 `cookies.json`，
 > GitHub 官方明确：**公开仓库中任何人都能通过 fork/PR 读取 cache 内容**，等于把登录态暴露给所有人。
 > 请按下方「安全建议」一节把本仓库设为 **Private**，cache 即仅你自己可见，自动刷新又零维护。
-> 注意：`upload/download-artifact@v4` 默认只在同一 workflow run 内生效、**无法跨 run 复用**，故此处改用 `actions/cache`（支持跨运行命中）。
 > 本地（固定 IP）运行同样由 `cookies.json` 复用。若 Actions 连不上论坛（网络原因），可改用本地运行或自建国内 runner。
 
 ---
@@ -90,18 +89,14 @@ Cookie 持久化依赖 `actions/cache`，而 cache 里存的是含登录会话�
 
 1. 进入本仓库页面，点右上角 **⚙️ Settings（设置）**；
 2. 拉到页面**最底部**的 **⚠️ Danger Zone（危险区域）**，点 **Change repository visibility（更改仓库可见性）**；
-3. 在弹出框里选 **Private（私有）**，按提示输入仓库名 `wnflb-checkin` 确认。
+3. 在弹出框里选 **Private（私有）**，按提示确认。
 
-> 若你是从公开仓库 **Fork** 来的，Fork 默认也是**公开**的，按上面 3 步改一次即可。
-> 私有后的 Fork 不影响你之后从上游（`appcctv/wnflb-checkin`）同步代码更新。
 
 改完后：cache 只有你和协作者可见，自动刷新、零维护，是最省心的自用方案。
 
 **其他可选方案（如坚持公开仓库）**：
 
-- **用 `FORUM_COOKIE` secret 替代 cache**：手动把 Cookie 字符串填进 Repository secret（优先级高于 cache），
-  secret 加密存储、日志自动打码、fork/PR 读不到；缺点是不自动刷新，cookie 过期需你手动去 Settings 改一次。
-- **固定 IP 跳过验证码**：用本地运行或自建国内 runner，cookie 存本地文件长期复用，连 cache 都不需要。
+- **不要接受别人的PR
 
 
 ## 说明 / 注意
