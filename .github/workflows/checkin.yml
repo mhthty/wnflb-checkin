@@ -8,7 +8,7 @@ on:
 
 permissions:
   contents: read
-  actions: write   # actions/cache 保存缓存 + github-script 删除缓存需要写权限
+  actions: write   # actions/cache 保存缓存 + gh api 删除旧缓存需要写权限
 
 jobs:
   checkin:
@@ -47,19 +47,16 @@ jobs:
       - name: 删除旧 Cookie 缓存（重新登录后）
         # 仅在脚本本次重新登录成功(refreshed=true)时执行：删掉旧缓存，避免过期 cookie 残留
         if: ${{ steps.checkin.outputs.refreshed == 'true' }}
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const owner = context.repo.owner
-            const repo = context.repo.repo
-            const { data } = await github.rest.actions.getActionsCacheListForRepo({
-              owner, repo, key: 'wnflb-cookies'
-            })
-            for (const c of (data.actions_caches || [])) {
-              if (c.key === 'wnflb-cookies') {
-                await github.rest.actions.deleteActionsCacheById({ owner, repo, cache_id: c.cache_id })
-              }
-            }
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "查询已存在的 wnflb-cookies 缓存 ..."
+          ids=$(gh api "repos/${{ github.repository }}/actions/caches?key=wnflb-cookies" --jq '.actions_caches[].id')
+          for id in $ids; do
+            echo "删除旧缓存 id=$id"
+            gh api -X DELETE "repos/${{ github.repository }}/actions/caches/$id"
+          done
+          echo "旧缓存清理完成"
 
       - name: 保存 Cookie 缓存
         # 同一条件：重新登录后才写入新缓存（生成新的同时旧的已被上一步删除）
