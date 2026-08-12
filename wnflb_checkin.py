@@ -606,6 +606,18 @@ def inspect_login():
     print("======================")
 
 
+def mark_refreshed():
+    """重新登录成功并已写盘时，向 GitHub Actions 输出 refreshed=true，
+    通知 workflow 删除旧缓存并保存新 Cookie（避免缓存累积 / 过期不更新）。"""
+    p = os.environ.get("GITHUB_OUTPUT")
+    if p:
+        try:
+            with open(p, "a") as f:
+                f.write("refreshed=true\n")
+        except OSError:
+            pass
+
+
 # ========================= 主流程 =========================
 
 def main():
@@ -664,6 +676,7 @@ def main():
         print(f"  -> {msg}")
         if not args.no_save:
             save_cookies(session, args.cookie_file)
+            mark_refreshed()
         logged, html = verify_login(session)
         if not logged:
             print("[FAIL] 登录后首页校验未通过")

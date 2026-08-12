@@ -2,13 +2,13 @@ name: 福利吧自动签到
 
 on:
   schedule:
-    # 北京时间 09:00 与 22:00（对应 UTC 01:00 / 14:00）
+    # 北京时间 1:00 与 22:00（对应 UTC 17:00 / 14:00）
     - cron: "0 17,14 * * *"
   workflow_dispatch: {}
 
 permissions:
   contents: read
-  actions: write   # actions/cache 保存缓存需要写权限
+  actions: write   # actions/cache 保存缓存 + github-script 删除缓存需要写权限
 
 jobs:
   checkin:
@@ -27,16 +27,15 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: 恢复 Cookie 缓存
-        uses: actions/cache@v4
+        id: cookie-restore
+        uses: actions/cache/restore@v4
         with:
           path: cookies.json
-          # 用 run_id 作 key，每次都是新 key → 结束时 cache 的 save 步骤总会写入最新 cookie
-          # restore-keys 用前缀匹配，自动恢复上一次 run 缓存的 cookie（跨 run 复用）
-          key: wnflb-cookies-${{ github.run_id }}
-          restore-keys: |
-            wnflb-cookies-
+          # 固定 key：精确命中(cache-hit)时 cache 不会新建 entry → cookie 没过期就不生成新缓存
+          key: wnflb-cookies
 
       - name: 执行签到
+        id: checkin
         env:
           FORUM_USERNAME: ${{ secrets.FORUM_USERNAME }}
           FORUM_PASSWORD: ${{ secrets.FORUM_PASSWORD }}
@@ -44,3 +43,28 @@ jobs:
           PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
           SERVERCHAN_KEY: ${{ secrets.SERVERCHAN_KEY }}
         run: python wnflb_checkin.py
+
+      - name: 删除旧 Cookie 缓存（重新登录后）
+        # 仅在脚本本次重新登录成功(refreshed=true)时执行：删掉旧缓存，避免过期 cookie 残留
+        if: ${{ steps.checkin.outputs.refreshed == 'true' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner
+            const repo = context.repo.repo
+            const { data } = await github.rest.actions.getActionsCacheListForRepo({
+              owner, repo, key: 'wnflb-cookies'
+            })
+            for (const c of (data.actions_caches || [])) {
+              if (c.key === 'wnflb-cookies') {
+                await github.rest.actions.deleteActionsCacheById({ owner, repo, cache_id: c.cache_id })
+              }
+            }
+
+      - name: 保存 Cookie 缓存
+        # 同一条件：重新登录后才写入新缓存（生成新的同时旧的已被上一步删除）
+        if: ${{ steps.checkin.outputs.refreshed == 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: cookies.json
+          key: wnflb-cookies
