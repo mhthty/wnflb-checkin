@@ -393,7 +393,8 @@ def _submit_login(session, formhash, loginhash, username="", password="",
     # 权威校验：访问首页看 discuz_uid 是否为真实 UID
     logged, _ = verify_login(session)
     if logged:
-        return True, (msg or "登录成功"), txt
+        # 成功页提示区含内联 JS，extract_message 会抽到脏文本，统一用干净文案
+        return True, "登录成功", txt
     # 密码/用户名错误等明确失败
     if msg and ("密码" in msg or "用户名" in msg):
         return False, f"登录失败: {msg}", txt
@@ -415,7 +416,7 @@ def do_login(session, username, password):
         session, formhash, loginhash, username, password, None, None
     )
     if ok:
-        return True, msg
+        return True, "登录成功"
 
     # 被验证码挑战：从第一次提交的响应里直接解析挑战页（auth 由本次响应给出）。
     # 关键：auth 在 HTML 里可能以 %2F 形式存在（含 /），需先 unquote 还原，
@@ -472,7 +473,7 @@ def do_login(session, username, password):
             cap["seccodehash"], challenge=True,
         )
         if ok2:
-            return True, (last_msg or "登录成功(已通过验证码)")
+            return True, "登录成功(已通过验证码)"
         # 验证码不正确则换新图重试
         if "验证码" in last_msg and ("不正确" in last_msg or "错误" in last_msg):
             print(f"  [登录] 第 {attempt} 次验证码不正确，换新图重试 ...")
