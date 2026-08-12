@@ -51,7 +51,7 @@
    > 缓存采用**固定 key** + 仅在「重新登录成功」时删旧存新：cookie 没过期不生成新缓存、生成新缓存的同时旧的被删除，**不会无限累积**。
 
 > ⚠️ **安全建议：Fork 后把仓库改为私有（强烈推荐）**。Cache 里存的是含登录会话令牌（`auth`）的 `cookies.json`，
-> GitHub 官方明确：**公开仓库中任何人都能通过 fork/PR 读取 cache 内容**，等于把登录态暴露给所有人。
+> GitHub 官方明确：**公开仓库中任何人都能通过 PR 后读取 cache 内容**，等于把登录态暴露给所有人。
 > 请按下方「安全建议」一节把本仓库设为 **Private**，cache 即仅你自己可见，自动刷新又零维护。
 > 本地（固定 IP）运行同样由 `cookies.json` 复用。若 Actions 连不上论坛（网络原因），可改用本地运行或自建国内 runner。
 
@@ -82,8 +82,7 @@ Windows 用户也可双击 `test_local.bat`，按提示输入账号密码（密�
 Cookie 持久化依赖 `actions/cache`，而 cache 里存的是含登录会话令牌（`auth`）的 `cookies.json`。
 
 **为什么必须私有**：GitHub 官方文档原文——*"Anyone with read access can create a pull request on a repository and access the contents of a cache."*
-即**公开仓库中任何人都能通过 fork 你的仓库并发起 PR 来读取 cache 内容**。所以公开仓库用 cache 存登录态 = 把账号会话令牌暴露给所有人。
-（日志本身已不再打印令牌，但 cache 这份副本是另一处泄漏面，只有私有能根治。）
+即**公开仓库中任何人都能通过 fork 你的仓库并发起 PR 来读取 cache 内容**。
 
 **怎么改成私有（3 步）**：
 
