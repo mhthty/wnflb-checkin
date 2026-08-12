@@ -76,6 +76,11 @@ def cookies_to_header(session):
     return "; ".join(f"{c.name}={c.value}" for c in session.cookies)
 
 
+def redact_cookie_header(header):
+    """脱敏：把 auth 会话令牌打码，避免登录日志泄露（公开仓库 Actions 日志人人可见）"""
+    return re.sub(r"(auth=)[^;]+", r"\1***", header)
+
+
 def get_page_text(resp):
     """优先按 GBK 解码（论坛是 GBK）"""
     if resp.encoding and resp.encoding.lower() in ("gbk", "gb2312", "gb18030"):
@@ -678,8 +683,8 @@ def main():
         print(f"  -> {msg}")
         if not args.no_save:
             save_cookies(session, args.cookie_file)
-            # 顺便打印可复制的 Cookie 字符串（方便填 FORUM_COOKIE）
-            print(f"  [Cookie] 字符串: {cookies_to_header(session)}")
+            # 打印可复制的 Cookie 字符串（方便填 FORUM_COOKIE）——auth 会话令牌已脱敏
+            print(f"  [Cookie] 字符串(已脱敏): {redact_cookie_header(cookies_to_header(session))}")
         logged, html = verify_login(session)
         if not logged:
             print("[FAIL] 登录后首页校验未通过")
