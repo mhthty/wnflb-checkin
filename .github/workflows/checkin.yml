@@ -2,66 +2,40 @@ name: 福利吧自动签到
 
 on:
   schedule:
-    # 北京时间 1:00 与 22:00（对应 UTC 17:00 / 14:00）
-    - cron: "0 17,14 * * *"
+    - cron: '0 17 * * *'
+    - cron: '0 6 * * *'
   workflow_dispatch: {}
 
 permissions:
   contents: read
-  actions: write   # actions/cache 保存缓存 + gh api 删除旧缓存需要写权限
 
 jobs:
   checkin:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
-      - name: 检出代码
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: 设置 Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
       - name: 安装依赖
         run: pip install -r requirements.txt
 
-      - name: 恢复 Cookie 缓存
-        id: cookie-restore
-        uses: actions/cache/restore@v4
-        with:
-          path: cookies.json
-          # 固定 key：精确命中(cache-hit)时 cache 不会新建 entry → cookie 没过期就不生成新缓存
-          key: wnflb-cookies
-
       - name: 执行签到
-        id: checkin
         env:
+          FORUM_URL: ${{ secrets.FORUM_URL }}
           FORUM_USERNAME: ${{ secrets.FORUM_USERNAME }}
           FORUM_PASSWORD: ${{ secrets.FORUM_PASSWORD }}
           FORUM_COOKIE: ${{ secrets.FORUM_COOKIE }}
-          PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
+          FORUM_SIGN_PATH: ${{ secrets.FORUM_SIGN_PATH }}
+          SCT_TOKEN: ${{ secrets.SCT_TOKEN }}
           SERVERCHAN_KEY: ${{ secrets.SERVERCHAN_KEY }}
+          PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          BARK_URL: ${{ secrets.BARK_URL }}
+          WECOM_WEBHOOK: ${{ secrets.WECOM_WEBHOOK }}
+          XIATUISHE_TOKEN: ${{ secrets.XIATUISHE_TOKEN }}
         run: python wnflb_checkin.py
-
-      - name: 删除旧 Cookie 缓存（重新登录后）
-        # 仅在脚本本次重新登录成功(refreshed=true)时执行：删掉旧缓存，避免过期 cookie 残留
-        if: ${{ steps.checkin.outputs.refreshed == 'true' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          echo "查询已存在的 wnflb-cookies 缓存 ..."
-          ids=$(gh api "repos/${{ github.repository }}/actions/caches?key=wnflb-cookies" --jq '.actions_caches[].id')
-          for id in $ids; do
-            echo "删除旧缓存 id=$id"
-            gh api -X DELETE "repos/${{ github.repository }}/actions/caches/$id"
-          done
-          echo "旧缓存清理完成"
-
-      - name: 保存 Cookie 缓存
-        # 同一条件：重新登录后才写入新缓存（生成新的同时旧的已被上一步删除）
-        if: ${{ steps.checkin.outputs.refreshed == 'true' }}
-        uses: actions/cache/save@v4
-        with:
-          path: cookies.json
-          key: wnflb-cookies
